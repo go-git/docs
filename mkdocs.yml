@@ -1,0 +1,26 @@
+site_name: go-git Documentation
+site_url: https://go-git.github.io/docs
+repo_url: https://github.com/go-git/docs
+
+theme: 
+  name: readthedocs
+  highlightjs: true
+  hljs_languages:
+  - go
+
+docs_dir: src
+
+markdown_extensions:
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Tutorials:
+    - Getting Started: tutorials/getting-started.md
+    - Advanced Usage: tutorials/advanced-usage.md
+    - Troubleshooting: tutorials/troubleshooting.md
+    - Migrating to V6: tutorials/migrating-from-v5-to-v6.md
+  - Concepts:
+    - Overview: concepts/overview.md

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://go-git.github.io/docs/concepts/overview/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Overview - go-git Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Overview";
+        var mkdocs_page_input_path = "concepts/overview.md";
+        var mkdocs_page_url = "/docs/concepts/overview/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/go.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> go-git Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Tutorials</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../tutorials/getting-started/">Getting Started</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../tutorials/advanced-usage/">Advanced Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../tutorials/troubleshooting/">Troubleshooting</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../tutorials/migrating-from-v5-to-v6/">Migrating to V6</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Overview</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#dot-git-storers">Dot Git Storers</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#filesystem">Filesystem</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#transport-schemes">Transport Schemes</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#cache">Cache</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#hash">Hash</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">go-git Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Concepts</li>
+      <li class="breadcrumb-item active">Overview</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/go-git/docs/edit/master/docs/concepts/overview.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="concepts">Concepts</h1>
+<p><code>go-git</code> was built in a highly extensible manner, which enables some of its functionalities to be changed or extended without the need of changing its codebase.</p>
+<p>Here are key concepts that enable that extensibility:</p>
+<h2 id="dot-git-storers">Dot Git Storers</h2>
+<p>Dot git storers are the components responsible for storing the Git internal files, including objects and references.</p>
+<p>The built-in storer implementations include <a href="https://github.com/go-git/go-git/tree/main/storage/memory">memory</a> and <a href="https://github.com/go-git/go-git/tree/main/storage/filesystem">filesystem</a>. The <code>memory</code> storer stores all the data in memory, and its use look like this:</p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="nx">r</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">git</span><span class="p">.</span><span class="nx">Init</span><span class="p">(</span><span class="nx">memory</span><span class="p">.</span><span class="nx">NewStorage</span><span class="p">(),</span><span class="w"> </span><span class="kc">nil</span><span class="p">)</span>
+</code></pre></div>
+<p>The <code>filesystem</code> storer stores the data in the OS filesystem, and can be used as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="nx">r</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">git</span><span class="p">.</span><span class="nx">Init</span><span class="p">(</span><span class="nx">filesystem</span><span class="p">.</span><span class="nx">NewStorage</span><span class="p">(</span><span class="nx">osfs</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">&quot;/tmp/foo&quot;</span><span class="p">)),</span><span class="w"> </span><span class="kc">nil</span><span class="p">)</span>
+</code></pre></div>
+<p>New implementations can be created by implementing the <a href="https://github.com/go-git/go-git/tree/main/storage/storer.go#L16">storage.Storer interface</a>.</p>
+<h2 id="filesystem">Filesystem</h2>
+<p>Git repository worktrees are managed using a filesystem abstraction based on <a href="https://github.com/go-git/go-billy">go-billy</a>. The Git operations will take place against the specific filesystem implementation. Initialising a repository in Memory can be done as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="nx">fs</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">memfs</span><span class="p">.</span><span class="nx">New</span><span class="p">()</span>
+<span class="w">    </span><span class="nx">r</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">git</span><span class="p">.</span><span class="nx">Init</span><span class="p">(</span><span class="nx">memory</span><span class="p">.</span><span class="nx">NewStorage</span><span class="p">(),</span><span class="w"> </span><span class="nx">fs</span><span class="p">)</span>
+</code></pre></div>
+<p>The same operation can be done against the OS filesystem:</p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="nx">fs</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">osfs</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">&quot;/tmp/foo&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">r</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">git</span><span class="p">.</span><span class="nx">Init</span><span class="p">(</span><span class="nx">memory</span><span class="p">.</span><span class="nx">NewStorage</span><span class="p">(),</span><span class="w"> </span><span class="nx">fs</span><span class="p">)</span>
+</code></pre></div>
+<p>New filesystems (e.g. cloud based storage) could be created by implementing <code>go-billy</code>'s <a href="https://github.com/go-git/go-billy/blob/326c59f064021b821a55371d57794fbfb86d4cb3/fs.go#L52">Filesystem interface</a>.</p>
+<h2 id="transport-schemes">Transport Schemes</h2>
+<p>Git supports various transport schemes, including <code>http</code>, <code>https</code>, <code>ssh</code>, <code>git</code>, <code>file</code>. <code>go-git</code> defines the <a href="https://github.com/go-git/go-git/tree/main/plumbing/transport/common.go#L48">transport.Transport interface</a> to represent them.</p>
+<p>The built-in implementations can be replaced by calling <code>transport.Register</code>.</p>
+<p>An example of changing the built-in <code>https</code> implementation to skip TLS could look like this:</p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="nx">customClient</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">http</span><span class="p">.</span><span class="nx">Client</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">Transport</span><span class="p">:</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">http</span><span class="p">.</span><span class="nx">Transport</span><span class="p">{</span>
+<span class="w">            </span><span class="nx">TLSClientConfig</span><span class="p">:</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">tls</span><span class="p">.</span><span class="nx">Config</span><span class="p">{</span><span class="nx">InsecureSkipVerify</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nx">transport</span><span class="p">.</span><span class="nx">Register</span><span class="p">(</span><span class="s">&quot;https&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">githttp</span><span class="p">.</span><span class="nx">NewClient</span><span class="p">(</span><span class="nx">customClient</span><span class="p">))</span>
+</code></pre></div>
+<p>Some internal implementations enables code reuse amongst the different transport implementations. Some of these may be made public in the future (e.g. <code>plumbing/transport/internal/common</code>).</p>
+<h2 id="cache">Cache</h2>
+<p>Several different operations across <code>go-git</code> lean on caching of objects in order to achieve optimal performance. The caching functionality is defined by the <a href="https://github.com/go-git/go-git/tree/main/plumbing/cache/common.go#L17">cache.Object interface</a>.</p>
+<p>Two built-in implementations are <code>cache.ObjectLRU</code> and <code>cache.BufferLRU</code>. However, the caching functionality can be customized by implementing the interface <code>cache.Object</code> interface.</p>
+<h2 id="hash">Hash</h2>
+<p><code>go-git</code> uses the <code>crypto.Hash</code> interface to represent hash functions. The built-in implementations are <code>github.com/pjbgf/sha1cd</code> for SHA1 and Go's <code>crypto/SHA256</code>.</p>
+<p>The default hash functions can be changed by calling <code>hash.RegisterHash</code>.
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="kd">func</span><span class="w"> </span><span class="nx">init</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">hash</span><span class="p">.</span><span class="nx">RegisterHash</span><span class="p">(</span><span class="nx">crypto</span><span class="p">.</span><span class="nx">SHA1</span><span class="p">,</span><span class="w"> </span><span class="nx">sha1</span><span class="p">.</span><span class="nx">New</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+</code></pre></div></p>
+<p>New <code>SHA1</code> or <code>SHA256</code> hash functions that implement the <code>hash.RegisterHash</code> interface can be registered by calling <code>RegisterHash</code>.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../tutorials/migrating-from-v5-to-v6/" class="btn btn-neutral float-left" title="Migrating to V6"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/go-git/docs" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../../tutorials/migrating-from-v5-to-v6/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

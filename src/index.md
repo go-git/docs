@@ -13,12 +13,12 @@ go-git is a highly extensible Git implementation in pure Go. This documentation 
 
 ```go
 import (
-    "github.com/go-git/go-git/v5"
+    "github.com/go-git/go-git/v6"
 )
 
 func main() {
     // Clone repository
-    repo, err := git.PlainClone("/path/to/repo", false, &git.CloneOptions{
+    repo, err := git.PlainClone("/path/to/repo", &git.CloneOptions{
         URL: "https://github.com/go-git/go-git",
     })
 }

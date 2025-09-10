@@ -16,7 +16,7 @@ operations using the latest version of go-git.
 The following example shows how to clone a Git repository to your local filesystem:
 
 ```go
-r, err := git.PlainClone("/path/to/repo", false, &git.CloneOptions{
+r, err := git.PlainClone("/path/to/repo", &git.CloneOptions{
     URL: "https://github.com/go-git/go-git",
 })
 ```

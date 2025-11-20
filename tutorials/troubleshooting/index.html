@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://go-git.github.io/docs/tutorials/troubleshooting/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Troubleshooting - go-git Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Troubleshooting";
+        var mkdocs_page_input_path = "tutorials/troubleshooting.md";
+        var mkdocs_page_url = "/docs/tutorials/troubleshooting/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/go.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> go-git Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Tutorials</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../getting-started/">Getting Started</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../advanced-usage/">Advanced Usage</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Troubleshooting</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#debugging-and-tracing">Debugging and Tracing</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#available-trace-options">Available Trace Options</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#common-errors-and-solutions">Common Errors and Solutions</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#performance-issues">Performance Issues</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#large-repository-cloning">Large Repository Cloning</a>
+    </li>
+        </ul>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#getting-help">Getting Help</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../migrating-from-v5-to-v6/">Migrating to V6</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../concepts/overview/">Overview</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">go-git Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Tutorials</li>
+      <li class="breadcrumb-item active">Troubleshooting</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/go-git/docs/edit/master/docs/tutorials/troubleshooting.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="troubleshooting">Troubleshooting</h1>
+<p>This guide covers common issues encountered when using go-git.</p>
+<h2 id="debugging-and-tracing">Debugging and Tracing</h2>
+<h3 id="available-trace-options">Available Trace Options</h3>
+<p>go-git supports different tracing levels. Enable them by calling <code>trace.SetTarget</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="s">`github.com/go-git/go-git/v6/utils/trace`</span>
+
+<span class="o">...</span>
+
+<span class="nx">trace</span><span class="p">.</span><span class="nx">SetTarget</span><span class="p">(</span><span class="nx">trace</span><span class="p">.</span><span class="nx">SSH</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">trace</span><span class="p">.</span><span class="nx">Performance</span><span class="p">)</span>
+</code></pre></div>
+<p>Here are the current trace options:</p>
+<ul>
+<li>General: General traces general operations.</li>
+<li>Packet: Packet traces git packets.</li>
+<li>SSH:  SSH handshake operations. This does not have a direct translation to an upstream trace option.</li>
+<li>Performance: performance information for specific go-git operations.</li>
+<li>HTTP: HTTP operations and requests.
+<div class="highlight"><pre><span></span><code>### SSH Connection Issues
+
+To enable trace information for SSH handshakes, use the `GIT_TRACE_SSH` environment variable:
+
+```bash
+$ GIT_TRACE_SSH=true go run _examples/clone/main.go git@github.com:go-git/go-git /tmp/go-git
+19:09:14.134147 common.go:43: ssh: Using default auth builder (user: git)
+19:09:14.134193 sshagent.go:42: ssh: net.Dial unix sock /tmp/ssh-XXXXXXULYg1c/agent.6427
+19:09:14.134224 auth_method.go:224: ssh: ssh-public-key-callback user=git
+19:09:14.134317 auth_method.go:345: ssh: found key: sk-ssh-ed25519@openssh.com SHA256:otsLd7qnCx9TrhUfIPCiP2cbk3Rkb5gtxyUJy2Zeheo
+19:09:14.134323 auth_method.go:255: ssh: known_hosts sources [/home/levi/.ssh/known_hosts /etc/ssh/ssh_known_hosts]
+19:09:14.134330 auth_method.go:260: ssh: filtered known_hosts sources [/home/levi/.ssh/known_hosts]
+19:09:14.134533 auth_method.go:255: ssh: known_hosts sources [/home/levi/.ssh/known_hosts /etc/ssh/ssh_known_hosts]
+19:09:14.134540 auth_method.go:260: ssh: filtered known_hosts sources [/home/levi/.ssh/known_hosts]
+19:09:14.134577 common.go:155: ssh: host key algorithms [ssh-ed25519]
+19:09:14.458332 auth_method.go:330: ssh: hostkey callback hostname=github.com:22 remote=20.26.156.215:22 pubkey=&quot;ssh-ed25519 SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU&quot;
+</code></pre></div></li>
+</ul>
+<h2 id="common-errors-and-solutions">Common Errors and Solutions</h2>
+<h3 id="performance-issues">Performance Issues</h3>
+<h4 id="large-repository-cloning">Large Repository Cloning</h4>
+<p><strong>Problem:</strong> Slow clone times for large repositories</p>
+<p><strong>Solutions:</strong>
+1. Use shallow clone:
+   <div class="highlight"><pre><span></span><code><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">git</span><span class="p">.</span><span class="nx">PlainClone</span><span class="p">(</span><span class="s">&quot;/path&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">git</span><span class="p">.</span><span class="nx">CloneOptions</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">URL</span><span class="p">:</span><span class="w">   </span><span class="s">&quot;https://github.com/user/repo&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">Depth</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="c1">// Only fetch latest commit</span>
+<span class="p">})</span>
+</code></pre></div></p>
+<ol>
+<li>
+<p>Clone single branch:
+   <div class="highlight"><pre><span></span><code><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">git</span><span class="p">.</span><span class="nx">PlainClone</span><span class="p">(</span><span class="s">&quot;/path&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">git</span><span class="p">.</span><span class="nx">CloneOptions</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">URL</span><span class="p">:</span><span class="w">          </span><span class="s">&quot;https://github.com/user/repo&quot;</span><span class="p">,</span><span class="w"> </span>
+<span class="w">    </span><span class="nx">SingleBranch</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">ReferenceName</span><span class="p">:</span><span class="w"> </span><span class="nx">plumbing</span><span class="p">.</span><span class="nx">NewBranchReferenceName</span><span class="p">(</span><span class="s">&quot;main&quot;</span><span class="p">),</span>
+<span class="p">})</span>
+</code></pre></div></p>
+</li>
+<li>
+<p>Skip tags when not needed:
+   <div class="highlight"><pre><span></span><code><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">git</span><span class="p">.</span><span class="nx">PlainClone</span><span class="p">(</span><span class="s">&quot;/path&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">git</span><span class="p">.</span><span class="nx">CloneOptions</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">URL</span><span class="p">:</span><span class="w">     </span><span class="s">&quot;https://github.com/user/repo&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">NoTags</span><span class="p">:</span><span class="w">  </span><span class="kc">true</span><span class="p">,</span>
+<span class="p">})</span>
+</code></pre></div></p>
+</li>
+</ol>
+<h2 id="getting-help">Getting Help</h2>
+<p>If you encounter issues not covered here:</p>
+<ol>
+<li>Check the <a href="https://github.com/go-git/go-git/tree/main/_examples">examples directory</a> for usage patterns</li>
+<li>Enable tracing to get detailed debug information</li>
+<li>Review the <a href="https://github.com/go-git/go-git/issues">GitHub issues</a> for similar problems</li>
+<li>Create a minimal reproduction case when reporting bugs</li>
+</ol>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../advanced-usage/" class="btn btn-neutral float-left" title="Advanced Usage"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../migrating-from-v5-to-v6/" class="btn btn-neutral float-right" title="Migrating to V6">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/go-git/docs" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../advanced-usage/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../migrating-from-v5-to-v6/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

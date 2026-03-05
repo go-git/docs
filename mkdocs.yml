@@ -21,6 +21,7 @@ nav:
     - Getting Started: tutorials/getting-started.md
     - Advanced Usage: tutorials/advanced-usage.md
     - Troubleshooting: tutorials/troubleshooting.md
+    - Worktrees: tutorials/worktrees.md
     - Migrating to V6: tutorials/migrating-from-v5-to-v6.md
   - Concepts:
     - Overview: concepts/overview.md

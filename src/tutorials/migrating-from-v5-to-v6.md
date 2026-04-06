@@ -27,7 +27,7 @@ Use this checklist to audit your codebase before upgrading:
 - [ ] Call `defer r.Close()` on every `*git.Repository` obtained from filesystem-backed operations
 - [ ] Remove the `isBare bool` positional argument from `git.PlainClone` calls; set `CloneOptions.Bare` instead
 - [ ] Update any explicit `git.AllTags` / tag-fetch logic — tags are **no longer fetched by default** on `Fetch`
-- [ ] Replace `plumbing.TagMode` references with `git.TagMode`
+- [ ] Update explicit `git.TagMode` type references to `plumbing.TagMode` (constant usage like `git.AllTags` is unchanged)
 - [ ] Rename `config.Version_0` / `config.Version_1` constants to `config.Version0` / `config.Version1`
 - [ ] Update code that implements or embeds `commitgraph.Index` — the interface gained `io.Closer` and new methods
 - [ ] Review any code that constructs `osfs` instances for `Plain*` operations — `BoundOS` is now the default
@@ -144,35 +144,47 @@ err := r.Fetch(&git.FetchOptions{
 
 ---
 
-### 4. `plumbing.TagMode` moved to `git.TagMode` ✅ Merged
+### 4. `git.TagMode` moved to `plumbing.TagMode` ✅ Merged
 
-**What changed:** The `TagMode` type and its constants (`AllTags`,
-`NoTags`, `InvalidTagMode`) have been moved from the `plumbing` package
-to the top-level `git` package.
+**What changed:** The `TagMode` type has been moved from the `git` package
+to the `plumbing` package. The `git` package still exports convenience
+constant aliases (`git.AllTags`, `git.NoTags`, etc.) that point to the
+underlying `plumbing` constants, so most code will continue to work without
+changes.
 
-**Why:** `TagMode` is a concept that belongs to high-level clone/fetch
-options rather than the low-level plumbing layer.
+**Why:** `TagMode` will be used in the transport package and other low-level
+components, so it makes sense for it to be defined in `plumbing` alongside
+other shared types like `ReferenceName`.
 
-**Impact:** Any explicit reference to `plumbing.TagMode`, `plumbing.AllTags`,
-or `plumbing.NoTags` will not compile.
+**Impact:** Minimal for most users. Code that uses `git.AllTags`,
+`git.NoTags`, etc. will continue to work unchanged. Only code that
+explicitly references the `git.TagMode` type (e.g., in function signatures or
+type assertions) will need updates.
 
 **How to migrate:**
 
+For most usage (constants), no change needed:
+
 ```go
-// v5
-import "github.com/go-git/go-git/v5/plumbing"
-
-opts := &git.CloneOptions{
-    Tags: plumbing.AllTags,
-}
-
-// v6
+// v5 and v6 — both work identically
 opts := &git.CloneOptions{
     Tags: git.AllTags,
 }
 ```
 
-**References:** [go-git/go-git#910](https://github.com/go-git/go-git/issues/910)
+If you explicitly reference the type:
+
+```go
+// v5
+var mode git.TagMode = git.AllTags
+
+// v6
+var mode plumbing.TagMode = git.AllTags
+// or
+var mode plumbing.TagMode = plumbing.AllTags
+```
+
+**References:** [PR #1300](https://github.com/go-git/go-git/pull/1300)
 
 ---
 

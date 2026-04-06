@@ -26,7 +26,7 @@ Use this checklist to audit your codebase before upgrading:
 - [ ] Update the module import path from `github.com/go-git/go-git/v5` to `github.com/go-git/go-git/v6`
 - [ ] Call `defer r.Close()` on every `*git.Repository` obtained from filesystem-backed operations
 - [ ] Remove the `isBare bool` positional argument from `git.PlainClone` calls; set `CloneOptions.Bare` instead
-- [ ] Update any explicit `git.AllTags` / tag-fetch logic — tags are **no longer fetched by default** on `Fetch`
+- [ ] If you relied on `Fetch` with default `TagFollowing` fetching all tags (v5 bug), explicitly set `Tags: git.AllTags`
 - [ ] Update explicit `git.TagMode` type references to `plumbing.TagMode` (constant usage like `git.AllTags` is unchanged)
 - [ ] Rename `config.Version_0` / `config.Version_1` constants to `config.Version0` / `config.Version1`
 - [ ] Update code that implements or embeds `commitgraph.Index` — the interface gained `io.Closer` and new methods
@@ -110,37 +110,53 @@ r, err := git.PlainClone("/path/to/repo", &git.CloneOptions{
 
 ---
 
-### 3. Tags are no longer fetched by default on `Fetch` ✅ Merged
+### 3. `TagFollowing` implementation fixed to match git behavior ✅ Merged
 
-**What changed:** `git.FetchOptions` previously defaulted to fetching all
-tags (`AllTags`). In v6 the default is **no tags**. This aligns go-git's
-behaviour with the `git fetch` CLI, which only auto-follows tags
-reachable from fetched commits when no explicit tag refspec is given.
+**What changed:** The default tag fetch mode remains `TagFollowing` in both v5 and v6, but v6 fixed a bug in how `TagFollowing` was implemented. In v5, `TagFollowing` incorrectly fetched **all** tags (including those pointing to tree/blob objects). In v6, `TagFollowing` correctly fetches only tags that point to commits in the fetched history, matching git CLI behavior.
 
-**Why:** When comparing actual `git fetch` behaviour with the test
-expectations in go-git, it became clear that the tests expected all tags to
-be pulled without the user explicitly requesting them.
+**Defaults (unchanged):**
+- `CloneOptions.Tags` defaults to `AllTags` (fetch all tags)
+- `FetchOptions.Tags` defaults to `TagFollowing` (fetch tags pointing to fetched commits)
 
-**Impact:** Code that relied on tags being silently included in every
-`Fetch` call will no longer receive them.
+**What `TagFollowing` should do (and now does correctly):**
+`TagFollowing` uses git's `include-tag` capability to fetch annotated tags that point to commits being fetched. This matches `git fetch` behavior. It should **not** fetch:
+- Tags pointing to tree or blob objects
+- Tags not reachable from the commits being fetched
+- All tags indiscriminately (that's `AllTags`)
 
-**How to migrate:** If you need all remote tags, set `Tags: git.AllTags`
-explicitly:
+**Why the change:** The v6 transport layer refactor (Dec 2024) fixed the implementation to correctly use the `include-tag` capability. Previously, `TagFollowing` was fetching all tags, which was incorrect.
+
+**Impact:** If your v5 code relied on `TagFollowing` fetching all tags (including those pointing to trees/blobs), you now need to explicitly set `Tags: git.AllTags`.
+
+**How to migrate:**
+
+If you need all tags (including those pointing to non-commit objects):
 
 ```go
-// v5 — tags were returned by default
+// v5 — TagFollowing incorrectly fetched all tags (bug)
 err := r.Fetch(&git.FetchOptions{
     RemoteName: "origin",
+    // Tags defaults to TagFollowing, but was fetching all tags
 })
 
-// v6 — must opt in to fetching all tags
+// v6 — explicitly request all tags
 err := r.Fetch(&git.FetchOptions{
     RemoteName: "origin",
-    Tags:       git.AllTags,
+    Tags:       git.AllTags,  // now required for all tags
 })
 ```
 
-**References:** [PR #1459](https://github.com/go-git/go-git/pull/1459)
+If you only need tags pointing to fetched commits (correct behavior):
+
+```go
+// v6 — default behavior now works correctly
+err := r.Fetch(&git.FetchOptions{
+    RemoteName: "origin",
+    // Tags defaults to TagFollowing (now correctly implemented)
+})
+```
+
+**References:** [PR #1459](https://github.com/go-git/go-git/pull/1459) (test fix revealing the bug)
 
 ---
 

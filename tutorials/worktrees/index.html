@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://go-git.github.io/docs/tutorials/worktrees/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Worktrees - go-git Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Worktrees";
+        var mkdocs_page_input_path = "tutorials/worktrees.md";
+        var mkdocs_page_url = "/docs/tutorials/worktrees/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/go.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> go-git Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Tutorials</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../getting-started/">Getting Started</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../advanced-usage/">Advanced Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Worktrees</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#creating-a-linked-worktree">Creating a Linked Worktree</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#opening-an-existing-linked-worktree">Opening an Existing Linked Worktree</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#worktree-configuration-extension">Worktree Configuration Extension</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#worktree-naming">Worktree Naming</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#limitations">Limitations</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../migrating-from-v5-to-v6/">Migrating to V6</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../concepts/overview/">Overview</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">go-git Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Tutorials</li>
+      <li class="breadcrumb-item active">Worktrees</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/go-git/docs/edit/master/docs/tutorials/worktrees.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="working-with-linked-worktrees">Working with Linked Worktrees</h1>
+<p>Git worktrees allow you to check out multiple branches simultaneously, each
+in its own working directory. go-git supports creating and opening linked
+worktrees through the experimental <code>x/plumbing/worktree</code> package.</p>
+<h2 id="overview">Overview</h2>
+<p>A Git repository has one <strong>main worktree</strong> (created by <code>git init</code> or
+<code>git clone</code>) and zero or more <strong>linked worktrees</strong>. Each linked worktree
+has its own checked-out branch and working directory, while sharing the
+same object database and refs with the main repository.</p>
+<p>Common use cases:</p>
+<ul>
+<li>Running tests on one branch while developing on another</li>
+<li>Comparing behavior across branches side by side</li>
+<li>Building a release while continuing feature work</li>
+</ul>
+<h2 id="creating-a-linked-worktree">Creating a Linked Worktree</h2>
+<p>To create a linked worktree, you need:</p>
+<ol>
+<li>A <code>storage.Storer</code> that implements <code>WorktreeStorer</code> (e.g. <code>filesystem.Storage</code>)</li>
+<li>A <code>billy.Filesystem</code> for the new worktree's working directory</li>
+<li>The commit hash to check out</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="kn">package</span><span class="w"> </span><span class="nx">main</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;fmt&quot;</span>
+<span class="w">    </span><span class="s">&quot;os&quot;</span>
+<span class="w">    </span><span class="s">&quot;path/filepath&quot;</span>
+
+<span class="w">    </span><span class="s">&quot;github.com/go-git/go-billy/v6/osfs&quot;</span>
+<span class="w">    </span><span class="s">&quot;github.com/go-git/go-git/v6&quot;</span>
+<span class="w">    </span><span class="s">&quot;github.com/go-git/go-git/v6/plumbing&quot;</span>
+<span class="w">    </span><span class="s">&quot;github.com/go-git/go-git/v6/storage/filesystem&quot;</span>
+
+<span class="w">    </span><span class="nx">xworktree</span><span class="w"> </span><span class="s">&quot;github.com/go-git/go-git/v6/x/plumbing/worktree&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">repoPath</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="s">&quot;/path/to/repo&quot;</span>
+<span class="w">    </span><span class="nx">worktreePath</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="s">&quot;/path/to/new-worktree&quot;</span>
+<span class="w">    </span><span class="nx">commitHash</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="s">&quot;abc123...&quot;</span>
+
+<span class="w">    </span><span class="c1">// Open the repository&#39;s .git storage</span>
+<span class="w">    </span><span class="nx">dotgitFs</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">osfs</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">filepath</span><span class="p">.</span><span class="nx">Join</span><span class="p">(</span><span class="nx">repoPath</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;.git&quot;</span><span class="p">),</span><span class="w"> </span><span class="nx">osfs</span><span class="p">.</span><span class="nx">WithChrootOS</span><span class="p">())</span>
+<span class="w">    </span><span class="nx">store</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">filesystem</span><span class="p">.</span><span class="nx">NewStorageWithOptions</span><span class="p">(</span><span class="nx">dotgitFs</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">filesystem</span><span class="p">.</span><span class="nx">Options</span><span class="p">{})</span>
+
+<span class="w">    </span><span class="c1">// Create a worktree manager</span>
+<span class="w">    </span><span class="nx">wt</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">xworktree</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">store</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;error: %v\n&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+<span class="w">        </span><span class="nx">os</span><span class="p">.</span><span class="nx">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Create the linked worktree filesystem</span>
+<span class="w">    </span><span class="nx">worktreeFs</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">osfs</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">worktreePath</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">name</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">filepath</span><span class="p">.</span><span class="nx">Base</span><span class="p">(</span><span class="nx">worktreePath</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// Add the worktree at the given commit</span>
+<span class="w">    </span><span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">wt</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="nx">worktreeFs</span><span class="p">,</span><span class="w"> </span><span class="nx">name</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">xworktree</span><span class="p">.</span><span class="nx">WithCommit</span><span class="p">(</span><span class="nx">plumbing</span><span class="p">.</span><span class="nx">NewHash</span><span class="p">(</span><span class="nx">commitHash</span><span class="p">)))</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Fprintf</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;error: %v\n&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+<span class="w">        </span><span class="nx">os</span><span class="p">.</span><span class="nx">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;Worktree %q created at %s\n&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">name</span><span class="p">,</span><span class="w"> </span><span class="nx">worktreePath</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="opening-an-existing-linked-worktree">Opening an Existing Linked Worktree</h2>
+<p>Once a linked worktree exists on disk, open it like any other repository
+using <code>git.Open</code> with the shared storage and the worktree filesystem:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">r</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">git</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">store</span><span class="p">,</span><span class="w"> </span><span class="nx">worktreeFs</span><span class="p">)</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="nx">ref</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">Head</span><span class="p">()</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="nx">commit</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">r</span><span class="p">.</span><span class="nx">CommitObject</span><span class="p">(</span><span class="nx">ref</span><span class="p">.</span><span class="nx">Hash</span><span class="p">())</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">commit</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="worktree-configuration-extension">Worktree Configuration Extension</h2>
+<p>When <code>extensions.worktreeConfig</code> is enabled in the repository config,
+each linked worktree can have its own <code>config.worktree</code> file at
+<code>.git/worktrees/&lt;name&gt;/config.worktree</code>. go-git's filesystem storage
+reads these files and overlays them on the shared repository config,
+matching the behavior of upstream Git.</p>
+<p>This is useful for per-worktree settings such as <code>core.sparseCheckout</code>
+or custom configuration that should differ between worktrees.</p>
+<p>Reference: <a href="https://git-scm.com/docs/git-worktree#_configuration_file">git-worktree configuration file</a></p>
+<h2 id="worktree-naming">Worktree Naming</h2>
+<p>Worktree names must match the pattern <code>[a-zA-Z0-9\-]+</code>. Typically the
+name is derived from the base directory name of the worktree path (e.g.
+<code>/tmp/hotfix</code> produces the name <code>hotfix</code>).</p>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li>Only <code>add</code> is fully supported for creating worktrees. Not all flags
+  or subcommands from <code>git worktree</code> are implemented.</li>
+<li>The worktree package lives in <code>x/plumbing/worktree</code>, meaning its API
+  is <strong>experimental</strong> and may change without notice.</li>
+<li>The storer must implement <code>WorktreeStorer</code> — currently only
+  <code>storage/filesystem</code> satisfies this.</li>
+<li>Worktree lock, move, and prune operations are not yet supported.</li>
+</ul>
+<p>See the <a href="_examples/worktrees/main.go">full example</a> in the go-git repository.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../troubleshooting/" class="btn btn-neutral float-left" title="Troubleshooting"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../migrating-from-v5-to-v6/" class="btn btn-neutral float-right" title="Migrating to V6">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/go-git/docs" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../troubleshooting/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../migrating-from-v5-to-v6/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

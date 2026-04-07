@@ -32,6 +32,7 @@ Use this checklist to audit your codebase before upgrading:
 - [ ] Update code that implements or embeds `commitgraph.Index` — the interface gained `io.Closer` and new methods
 - [ ] Review any code that constructs `osfs` instances for `Plain*` operations — `BoundOS` is now the default
 - [ ] Remove any validation that requires `refs/` prefix on `branch.*.merge` config values
+- [ ] Update code that relied on `Force: true` to remove untracked files — use `Worktree.Clean()` explicitly instead
 
 ---
 
@@ -306,9 +307,46 @@ workaround.
 
 ---
 
+### 9. `Checkout` with `Force: true` no longer deletes untracked files ✅ Merged
+
+**What changed:** In v5, calling `Worktree.Checkout(&git.CheckoutOptions{Force: true})` would delete untracked files from the working directory. In v6, `Force: true` only resets tracked files to match the target commit; untracked files remain on disk.
+
+**Why:** This was a bug in v5 that made go-git inconsistent with the git CLI. Real `git checkout --force` and `git reset --hard` operate only on tracked files—they never remove untracked content. Only `git clean` removes untracked files. The v5 behavior caused data loss for users who had local untracked files and expected `Force: true` to match git's semantics.
+
+**Impact:** Code that relied on `Force: true` to fully clean the working directory will now need to explicitly call `Worktree.Clean()` to remove untracked files. This is a safer default that prevents accidental deletion of user data.
+
+**How to migrate:**
+
+If you need the old behavior (resetting tracked files **and** removing untracked files), combine `Checkout` with `Clean`:
+
+```go
+// v5 — Force: true deleted both tracked and untracked files (bug)
+err := w.Checkout(&git.CheckoutOptions{
+    Hash:  targetCommit,
+    Force: true,
+})
+
+// v6 — explicitly clean untracked files after checkout
+err := w.Checkout(&git.CheckoutOptions{
+    Hash:  targetCommit,
+    Force: true,
+})
+if err != nil { ... }
+
+err = w.Clean(&git.CleanOptions{
+    Dir: true,  // remove untracked directories too
+})
+```
+
+If you only want to reset tracked files (the correct interpretation of `--force`), no migration is needed—v6 behavior is correct.
+
+**References:** [PR #1903](https://github.com/go-git/go-git/pull/1903), [Issue #796](https://github.com/go-git/go-git/issues/796), [Issue #1719](https://github.com/go-git/go-git/issues/1719), [Issue #365](https://github.com/go-git/go-git/issues/365), [Issue #633](https://github.com/go-git/go-git/issues/633)
+
+---
+
 ## Behaviour changes
 
-### 9. `DiffTreeWithOptions` deprecated; `DiffTree` will detect renames by default 🔲 Planned
+### 10. `DiffTreeWithOptions` deprecated; `DiffTree` will detect renames by default 🔲 Planned
 
 **What changed:** `object.DiffTreeWithOptions` is deprecated and will be
 removed in v6. The plan is for `object.DiffTree` to detect renames by
@@ -337,7 +375,7 @@ changes, err := object.DiffTree(treeA, treeB)
 
 ---
 
-### 10. `Worktree.Add` and `Worktree.AddGlob` deprecated 🔲 Planned
+### 11. `Worktree.Add` and `Worktree.AddGlob` deprecated 🔲 Planned
 
 **What changed:** `Worktree.Add(path string)` and
 `Worktree.AddGlob(pattern string)` are marked for deprecation in v6 in
@@ -372,7 +410,7 @@ err := w.AddWithOptions(&git.AddOptions{Glob: "*.go"})
 
 ---
 
-### 11. `AddOptions.Validate` signature change 🔲 Planned
+### 12. `AddOptions.Validate` signature change 🔲 Planned
 
 **What changed:** The `Validate` method on options structs (e.g.
 `AddOptions.Validate`) is planned to change its signature from
@@ -405,7 +443,7 @@ The following items are tracked in
 not yet been finalised or merged. Details may change before the v6.0.0
 release.
 
-### 12. SHA-256 repository support 🔲 Planned
+### 13. SHA-256 repository support 🔲 Planned
 
 **What changed:** go-git is adding support for SHA-256 object format
 repositories alongside existing SHA-1 repositories. Supporting both hash
@@ -428,7 +466,7 @@ will be documented once stabilised.
 
 ---
 
-### 13. Global and system git config support 💬 In Discussion
+### 14. Global and system git config support 💬 In Discussion
 
 **What changed:** go-git v5 only reads per-repository configuration
 (`.git/config`). v6 plans to add support for the global
@@ -451,7 +489,7 @@ config can opt out via a new scoped-config API.
 
 ---
 
-### 14. New transport API 🔲 Planned
+### 15. New transport API 🔲 Planned
 
 **What changed:** The internal transport layer is being redesigned. The
 `plumbing/transport/server` package's `Server` type and related helpers
@@ -472,7 +510,7 @@ will need to be updated.
 
 ---
 
-### 15. Additional `repository.go` API changes 🔲 Planned
+### 16. Additional `repository.go` API changes 🔲 Planned
 
 Several methods in `repository.go` are flagged for revision:
 

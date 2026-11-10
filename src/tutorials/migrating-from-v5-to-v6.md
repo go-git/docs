@@ -24,6 +24,7 @@ The canonical tracking issue for all breaking and behaviour changes is
 Use this checklist to audit your codebase before upgrading:
 
 - [ ] Update the module import path from `github.com/go-git/go-git/v5` to `github.com/go-git/go-git/v6`
+- [ ] Move `Auth`, `InsecureSkipTLS`, `CABundle` and `ProxyOptions` into `ClientOptions`, and replace `client.InstallProtocol` with per-operation options — see [Transport options and authentication](#transport-options-and-authentication)
 - [ ] Call `defer r.Close()` on every `*git.Repository` obtained from filesystem-backed operations
 - [ ] Remove the `isBare bool` positional argument from `git.PlainClone` calls; set `CloneOptions.Bare` instead
 - [ ] Update any explicit `git.AllTags` / tag-fetch logic — tags are **no longer fetched by default** on `Fetch`
@@ -453,6 +454,9 @@ config can opt out via a new scoped-config API.
 
 ### 14. New transport API 🔲 Planned
 
+> The client-side part of this change has been merged: see
+> [Transport options and authentication](#transport-options-and-authentication).
+
 **What changed:** The internal transport layer is being redesigned. The
 `plumbing/transport/server` package's `Server` type and related helpers
 will change.
@@ -509,6 +513,225 @@ github.com/go-git/go-git/v5/config    →  github.com/go-git/go-git/v6/config
 
 ---
 
+## Transport options and authentication
+
+> ✅ **Merged** — already in the `main` branch
+
+**What changed:**
+
+In v5, every operation's options struct had its own transport fields:
+
+- `Auth`
+- `InsecureSkipTLS`
+- `CABundle`
+- `ProxyOptions`
+
+Custom HTTP clients and transports were registered for the whole process with
+`client.InstallProtocol`.
+
+In v6, all of these are replaced by a single field:
+`ClientOptions []client.Option`. The options come from the new
+[`plumbing/client`](https://github.com/go-git/go-git/blob/9decb13c199a6b5b8d55df169dc3b5c22482364a/plumbing/client/client.go)
+package.
+
+`ClientOptions` is available on:
+
+- `CloneOptions`
+- `FetchOptions`
+- `PullOptions`
+- `PushOptions`
+- `ListOptions`
+- `SubmoduleUpdateOptions`
+
+**Impact:**
+
+Code that sets any of the removed fields, or calls `client.InstallProtocol`,
+will not compile.
+
+The authentication types themselves are unchanged: `http.BasicAuth`,
+`http.TokenAuth`, `ssh.NewPublicKeysFromFile`, `ssh.NewSSHAgentAuth` and so
+on. Only the way they are passed in has changed.
+
+**How to migrate:**
+
+Replace each v5 field or call with the matching option:
+
+| v5 | v6 |
+|----|----|
+| `Auth: &http.BasicAuth{...}` or `&http.TokenAuth{...}` | `client.WithHTTPAuth(&http.BasicAuth{...})` |
+| `Auth: sshAuth` (e.g. from `ssh.NewPublicKeysFromFile`) | `client.WithSSHAuth(sshAuth)` |
+| `InsecureSkipTLS: true` | `client.WithInsecureSkipTLS()` |
+| `CABundle: pem` | `client.WithCABundle(pem)` — see the note below |
+| `ProxyOptions: transport.ProxyOptions{...}` | `client.WithProxyURL(u)`, with credentials in `u.User` |
+| `client.InstallProtocol("https", http.NewClient(c))` | `client.WithHTTPClient(c)` |
+| `client.InstallProtocol(scheme, t)` | `client.WithTransport(scheme, t)` |
+
+The examples below import go-git's HTTP transport as `githttp`, to keep it
+apart from the standard library's `net/http`:
+
+```go
+import (
+    git "github.com/go-git/go-git/v6"
+    "github.com/go-git/go-git/v6/plumbing/client"
+    githttp "github.com/go-git/go-git/v6/plumbing/transport/http"
+    "github.com/go-git/go-git/v6/plumbing/transport/ssh"
+)
+```
+
+### HTTP authentication
+
+```go
+// v5
+r, err := git.PlainClone(path, false, &git.CloneOptions{
+    URL: url,
+    Auth: &githttp.BasicAuth{
+        Username: "user",
+        Password: token,
+    },
+})
+
+// v6
+r, err := git.PlainClone(path, &git.CloneOptions{
+    URL: url,
+    ClientOptions: []client.Option{
+        client.WithHTTPAuth(&githttp.BasicAuth{
+            Username: "user",
+            Password: token,
+        }),
+    },
+})
+if err != nil { ... }
+defer r.Close()
+```
+
+`&githttp.TokenAuth{Token: token}` is passed to `client.WithHTTPAuth` the same
+way.
+
+### SSH keys
+
+```go
+auth, err := ssh.NewPublicKeysFromFile("git", keyFile, "")
+if err != nil { ... }
+
+// v5
+r, err := git.PlainClone(path, false, &git.CloneOptions{
+    URL:  url,
+    Auth: auth,
+})
+
+// v6
+r, err := git.PlainClone(path, &git.CloneOptions{
+    URL: url,
+    ClientOptions: []client.Option{
+        client.WithSSHAuth(auth),
+    },
+})
+```
+
+### TLS verification and custom CAs
+
+```go
+// v5
+skipVerify := &git.CloneOptions{URL: url, InsecureSkipTLS: true}
+customCA := &git.CloneOptions{URL: url, CABundle: caPEM}
+
+// v6
+skipVerify := &git.CloneOptions{
+    URL:           url,
+    ClientOptions: []client.Option{client.WithInsecureSkipTLS()},
+}
+customCA := &git.CloneOptions{
+    URL:           url,
+    ClientOptions: []client.Option{client.WithCABundle(caPEM)},
+}
+```
+
+> **Behaviour change:** in v5, `CABundle` was added to the system's trusted
+> roots. In v6, `client.WithCABundle` trusts **only** the CAs in the bundle,
+> so hosts signed by a public CA will fail verification unless that CA is also
+> in the bundle. Because options are now set per operation, you can pass the
+> bundle only to the operations that talk to the host that needs it.
+
+### Proxies
+
+```go
+// v5
+r, err := git.PlainClone(path, false, &git.CloneOptions{
+    URL: repoURL,
+    ProxyOptions: transport.ProxyOptions{
+        URL:      proxyURL,
+        Username: "puser",
+        Password: "ppass",
+    },
+})
+
+// v6 — proxy credentials go in the URL's userinfo
+pu, err := url.Parse(proxyURL)
+if err != nil { ... }
+pu.User = url.UserPassword("puser", "ppass")
+
+r, err := git.PlainClone(path, &git.CloneOptions{
+    URL: repoURL,
+    ClientOptions: []client.Option{
+        client.WithProxyURL(pu),
+    },
+})
+```
+
+Proxies set through the `HTTP_PROXY` / `HTTPS_PROXY` environment variables
+are still used by default for HTTP(S), as in v5; no option is needed to keep
+that behaviour.
+
+### Custom HTTP clients and transports
+
+`client.InstallProtocol` registered a client for every later operation in the
+process. Its replacements apply only to the operation they are passed to:
+
+```go
+// v5 — process-wide
+client.InstallProtocol("https", githttp.NewClient(customClient))
+r, err := git.PlainClone(path, false, &git.CloneOptions{URL: url})
+
+// v6 — per operation
+r, err := git.PlainClone(path, &git.CloneOptions{
+    URL: url,
+    ClientOptions: []client.Option{
+        client.WithHTTPClient(customClient),
+    },
+})
+```
+
+```go
+// v5
+client.InstallProtocol("mygit", myTransport)
+
+// v6
+opts := &git.CloneOptions{
+    URL:           url,
+    ClientOptions: []client.Option{client.WithTransport("mygit", myTransport)},
+}
+```
+
+When `client.WithHTTPClient` is used, `WithInsecureSkipTLS`, `WithCABundle`
+and `WithProxyURL` no longer affect HTTP connections; configure TLS and
+proxies on the `*http.Client` itself. The `transport.Transport` interface has
+also changed, so custom transport implementations need to be ported
+separately; that is not covered here.
+
+Code that set things up once at startup can build the option slice once and
+reuse it:
+
+```go
+opts := []client.Option{client.WithHTTPAuth(auth)}
+
+err := r.Fetch(&git.FetchOptions{ClientOptions: opts})
+err = r.Push(&git.PushOptions{ClientOptions: opts})
+```
+
+**References:** [`plumbing/client/client.go`](https://github.com/go-git/go-git/blob/9decb13c199a6b5b8d55df169dc3b5c22482364a/plumbing/client/client.go), [`_examples/clone/auth`](https://github.com/go-git/go-git/tree/9decb13c199a6b5b8d55df169dc3b5c22482364a/_examples/clone/auth), [`_examples/custom_http`](https://github.com/go-git/go-git/tree/9decb13c199a6b5b8d55df169dc3b5c22482364a/_examples/custom_http)
+
+---
+
 ## References
 
 - [API and Behaviour changes for v6 (go-git/go-git#910)](https://github.com/go-git/go-git/issues/910)
@@ -520,3 +743,4 @@ github.com/go-git/go-git/v5/config    →  github.com/go-git/go-git/v6/config
 - [Revive linter / constant renames (PR #1771)](https://github.com/go-git/go-git/pull/1771)
 - [branch.*.merge validation fix (PR #1923)](https://github.com/go-git/go-git/pull/1923)
 - [Repository.Close() (PR #1906)](https://github.com/go-git/go-git/pull/1906)
+- [Transport client options (`plumbing/client`)](https://github.com/go-git/go-git/blob/9decb13c199a6b5b8d55df169dc3b5c22482364a/plumbing/client/client.go)

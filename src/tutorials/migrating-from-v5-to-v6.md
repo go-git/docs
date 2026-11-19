@@ -32,6 +32,10 @@ Use this checklist to audit your codebase before upgrading:
 - [ ] Update code that implements or embeds `commitgraph.Index` — the interface gained `io.Closer` and new methods
 - [ ] Review any code that constructs `osfs` instances for `Plain*` operations — `BoundOS` is now the default
 - [ ] Remove any validation that requires `refs/` prefix on `branch.*.merge` config values
+- [ ] Replace imports of `plumbing/transport/ssh/knownhosts` and `plumbing/transport/ssh/sshagent` with `github.com/go-git/x/ssh/knownhosts` and `github.com/go-git/x/ssh/agent`, and pass explicit `known_hosts` paths to `knownhosts.NewDB`
+- [ ] On Windows, use `github.com/go-git/x/ssh/agent` if you rely on Pageant
+- [ ] Set `HostKeyAlgorithms` next to a custom `HostKeyCallback` that only accepts some key types
+- [ ] Call `Close` on the value returned by `ssh.NewSSHAgentAuth`
 
 ---
 
@@ -485,6 +489,296 @@ These changes are still being finalised. Follow
 updates.
 
 **References:** [`repository.go` L426–440](https://github.com/go-git/go-git/blob/0a1c5ab118998a22ef88d8e6c42970197d77413c/repository.go#L426), [`repository.go` L561](https://github.com/go-git/go-git/blob/cf196ea5ba6c8b16712a9868cc2d4cca4f287ae4/repository.go#L561), [go-git/go-git#910](https://github.com/go-git/go-git/issues/910)
+
+---
+
+### 16. SSH host keys and agents 🔲 Planned
+
+**What changed:** go-git v5 depended on two SSH helper libraries,
+[skeema/knownhosts](https://github.com/skeema/knownhosts) and
+[xanzy/ssh-agent](https://github.com/xanzy/ssh-agent). v6 pre-releases
+carried vendored copies of them as the public `plumbing/transport/ssh/knownhosts`
+and `plumbing/transport/ssh/sshagent` packages. v6 removes both packages:
+
+- For `known_hosts` checking, go-git uses the
+  `github.com/go-git/x/ssh/knownhosts` module from
+  [go-git/x](https://github.com/go-git/x), which holds the skeema/knownhosts
+  code.
+- For the default SSH agent, go-git uses a small internal client written for
+  go-git. It reaches the agent through `SSH_AUTH_SOCK` on Unix-like systems
+  and through the Windows OpenSSH agent pipe on Windows.
+- On Windows, go-git no longer detects Pageant. The full agent client,
+  including Pageant, is the `github.com/go-git/x/ssh/agent` module.
+
+Alongside this, the SSH transport closes the agent connections it opens, and
+a caller-supplied `HostKeyCallback` no longer requires a `known_hosts` file.
+
+**Why:** go-git carries no copies of third-party code. Exporting the vendored
+packages would have frozen their APIs into go-git's stable v6 API, and
+keeping the copies meant carrying their upstream licences and syncing them by
+hand. The maintained implementations live in go-git/x, where they can evolve
+on their own. go-git depends on the `github.com/go-git/x/ssh/knownhosts`
+module, so every program that uses go-git already has it. go-git does not
+depend on `github.com/go-git/x/ssh/agent`.
+
+**What stays the same:** When no SSH auth is configured, go-git still:
+
+- verifies the server's host key against `known_hosts`. The files are taken
+  from `SSH_KNOWN_HOSTS`, or default to `~/.ssh/known_hosts` and
+  `/etc/ssh/ssh_known_hosts`. The host key algorithms offered to the server
+  are the ones listed in `known_hosts` for that host and port, so the server
+  presents a key type that can be verified.
+- authenticates through the running SSH agent: the socket named by
+  `SSH_AUTH_SOCK` on Unix-like systems, or the Windows OpenSSH agent pipe
+  (`\\.\pipe\openssh-ssh-agent`) on Windows.
+
+**Impact:**
+
+- Code that imports `plumbing/transport/ssh/knownhosts` or
+  `plumbing/transport/ssh/sshagent` will not compile.
+- Code that uses v5's `ssh.NewKnownHostsDb` will not compile. It was already
+  removed in earlier v6 pre-releases.
+- Windows users who rely on Pageant can no longer authenticate through the
+  default agent lookup or `ssh.NewSSHAgentAuth`. See the
+  example under **Pageant on Windows** below.
+- Code that calls `ssh.NewSSHAgentAuth` must close the returned value.
+
+**How to migrate:**
+
+Replace the removed packages with the go-git/x modules:
+
+| Removed | Replacement |
+|---------|-------------|
+| `github.com/go-git/go-git/v6/plumbing/transport/ssh/knownhosts` | `github.com/go-git/x/ssh/knownhosts` |
+| `github.com/go-git/go-git/v6/plumbing/transport/ssh/sshagent` | `github.com/go-git/x/ssh/agent` |
+| `ssh.NewKnownHostsDb(files...)` (v5) | `knownhosts.NewDB(files...)` from `github.com/go-git/x/ssh/knownhosts`, with explicit paths (see below) |
+
+Add the agent module to your `go.mod` if you use it:
+
+```sh
+go get github.com/go-git/x/ssh/agent@latest
+```
+
+`github.com/go-git/x/ssh/knownhosts` is already a dependency of go-git. Run
+`go get github.com/go-git/x/ssh/knownhosts@latest` only when your program
+imports it directly.
+
+The examples on this page need at least the first release of these modules.
+
+`github.com/go-git/x/ssh/knownhosts` has the same API as
+[skeema/knownhosts](https://github.com/skeema/knownhosts) v1.3.0, the version
+go-git vendored. To use it with go-git, set the callback and the algorithms
+for the host you connect to on the auth method:
+
+```go
+import (
+    "github.com/go-git/go-git/v6/plumbing/transport/ssh"
+    "github.com/go-git/x/ssh/knownhosts"
+)
+
+db, err := knownhosts.NewDB("/home/user/.ssh/known_hosts")
+if err != nil {
+    return err
+}
+
+auth, err := ssh.NewPublicKeysFromFile("git", "/path/to/id_ed25519", "")
+if err != nil {
+    return err
+}
+auth.HostKeyCallback = db.HostKeyCallback()
+auth.HostKeyAlgorithms = db.HostKeyAlgorithms("github.com:22")
+```
+
+`knownhosts.NewDB` is not a drop-in replacement for v5's
+`ssh.NewKnownHostsDb`. It reads only the files you pass, and does no default
+lookup and no filtering of missing files:
+
+- Called with no files, it returns an empty database. Every host is then
+  unknown and every connection fails.
+- It does not read `SSH_KNOWN_HOSTS`, `~/.ssh/known_hosts` or
+  `/etc/ssh/ssh_known_hosts` on its own.
+- It returns an error for a file that does not exist, instead of skipping it.
+
+If you called `ssh.NewKnownHostsDb()` without files, you have three options:
+
+- Leave `HostKeyCallback` nil. go-git then looks up the default files itself,
+  and also picks the host key algorithms from them.
+- Use `ssh.NewKnownHostsCallback()`, which still looks up the default files
+  and skips the missing ones. It returns only the callback, so it turns off
+  the algorithm selection (see **Custom host key callbacks** below).
+- Build the file list yourself, as v5 did, and pass it to `knownhosts.NewDB`:
+
+```go
+import (
+    "errors"
+    "io/fs"
+    "os"
+    "path/filepath"
+
+    "github.com/go-git/x/ssh/knownhosts"
+)
+
+// knownHostsFiles returns the files v5's ssh.NewKnownHostsDb() read: the
+// SSH_KNOWN_HOSTS list, or ~/.ssh/known_hosts and /etc/ssh/ssh_known_hosts,
+// leaving out files that do not exist.
+func knownHostsFiles() ([]string, error) {
+    files := filepath.SplitList(os.Getenv("SSH_KNOWN_HOSTS"))
+    if len(files) == 0 {
+        home, err := os.UserHomeDir()
+        if err != nil {
+            return nil, err
+        }
+        files = []string{
+            filepath.Join(home, ".ssh", "known_hosts"),
+            "/etc/ssh/ssh_known_hosts",
+        }
+    }
+
+    var found []string
+    for _, f := range files {
+        _, err := os.Stat(f)
+        if err == nil {
+            found = append(found, f)
+            continue
+        }
+        if !errors.Is(err, fs.ErrNotExist) {
+            return nil, err
+        }
+    }
+    if len(found) == 0 {
+        return nil, errors.New("no known_hosts file found, set SSH_KNOWN_HOSTS")
+    }
+    return found, nil
+}
+
+files, err := knownHostsFiles()
+if err != nil {
+    return err
+}
+
+db, err := knownhosts.NewDB(files...)
+if err != nil {
+    return err
+}
+```
+
+The agent API differs: `sshagent.New()` returned an `agent.Agent` and a
+`net.Conn`, while `agent.New()` returns an `*agent.Agent` that owns the
+connection and has a `Close` method.
+
+**Pageant on Windows.** When no agent is reachable, go-git returns an error
+that contains `no SSH agent found, use github.com/go-git/x/ssh/agent for
+other agents or Pageant on Windows`. Use the go-git/x agent module, which
+tries Pageant first and falls back to the Windows OpenSSH agent, and pass it
+to go-git with `client.WithSSHAuth`:
+
+```go
+import (
+    "github.com/go-git/go-git/v6"
+    "github.com/go-git/go-git/v6/plumbing/client"
+    "github.com/go-git/go-git/v6/plumbing/transport/ssh"
+    "github.com/go-git/x/ssh/agent"
+)
+
+a, err := agent.New()
+if err != nil {
+    return err
+}
+defer func() { _ = a.Close() }()
+
+auth := &ssh.PublicKeysCallback{
+    User:     "git",
+    Callback: a.Signers,
+}
+
+r, err := git.PlainClone("/path/to/repo", &git.CloneOptions{
+    URL:           "git@github.com:go-git/go-git.git",
+    ClientOptions: []client.Option{client.WithSSHAuth(auth)},
+})
+if err != nil {
+    return err
+}
+defer r.Close()
+```
+
+The same code works on every platform, so you can use it to control the
+agent connection yourself.
+
+**Custom host key callbacks.** When you set `HostKeyCallback` on an auth
+method, go-git does not read `known_hosts` at all, so no `known_hosts` file
+needs to exist. This matches v5. Earlier v6 pre-releases still read
+`known_hosts` to pick host key algorithms, and failed with
+`unable to find any valid known_hosts file` when there was none.
+
+go-git also does not pick host key algorithms for a callback you supply. If
+your callback only accepts some key types, such as a key pinned with
+`ssh.FixedHostKey`, list them in `HostKeyAlgorithms`. Otherwise the server
+may present a key of another type, which the callback rejects.
+
+The example pins github.com's ed25519 host key. Check the key of the host
+you connect to with its provider before pinning it. GitHub publishes its
+keys on its
+[SSH key fingerprints](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints)
+page. A key copied for the wrong host makes every handshake fail with a host
+key mismatch.
+
+```go
+import (
+    "github.com/go-git/go-git/v6/plumbing/transport/ssh"
+    gossh "golang.org/x/crypto/ssh"
+)
+
+// github.com's ed25519 host key, fingerprint
+// SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU.
+hostKey, _, _, _, err := gossh.ParseAuthorizedKey([]byte(
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"))
+if err != nil {
+    return err
+}
+
+auth, err := ssh.NewPublicKeysFromFile("git", "/path/to/id_ed25519", "")
+if err != nil {
+    return err
+}
+auth.HostKeyCallback = gossh.FixedHostKey(hostKey)
+auth.HostKeyAlgorithms = []string{gossh.KeyAlgoED25519}
+```
+
+`HostKeyAlgorithms` is a field of `ssh.HostKeyCallbackHelper`, which every
+auth method in `plumbing/transport/ssh` embeds. The same applies to a
+callback from `ssh.NewKnownHostsCallback`: setting it turns off the algorithm
+selection from `known_hosts`. Leave `HostKeyCallback` nil to keep the default
+behaviour.
+
+**Closing agent connections.** `ssh.NewSSHAgentAuth` opens a connection to
+the agent and keeps it open for as long as the returned
+`*ssh.PublicKeysCallback` is in use. In v5 that connection was never closed.
+Call `Close` on the returned value once the last clone, fetch or push that
+uses it has finished. The auth method stops working after `Close`.
+
+```go
+// v5
+auth, err := ssh.NewSSHAgentAuth("git")
+if err != nil {
+    return err
+}
+// no cleanup
+
+// v6
+auth, err := ssh.NewSSHAgentAuth("git")
+if err != nil {
+    return err
+}
+defer func() { _ = auth.Close() }()
+```
+
+go-git never closes an auth method passed with `client.WithSSHAuth`, and
+`Close` is a no-op on a `PublicKeysCallback` that you build yourself, as in
+the Pageant example above. Close the `*agent.Agent` in that case. When no
+SSH auth is configured, go-git opens the agent connection for each
+connection to the server and closes it itself.
+
+**References:** [go-git/x](https://github.com/go-git/x), [go-git/go-git#910](https://github.com/go-git/go-git/issues/910)
 
 ---
 
